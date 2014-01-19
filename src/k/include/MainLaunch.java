@@ -19,7 +19,7 @@ public class MainLaunch {
     private static final FileNameExtensionFilter csrc = new FileNameExtensionFilter(
             "C/C++/Arduino Sources", "c", "cpp", "ino");
     private static final String INCLUDE_PREPROCESS_DIRECTIVESRC_REGEX = "\\Q#include \"\\E(.+)\\Q\"\\E",
-            INCLUDE_PREPROCESS_DIRECTIVELIB_REGEX = "\\Q#include \"\\E(.+)\\Q\"\\E";
+            INCLUDE_PREPROCESS_DIRECTIVELIB_REGEX = "\\Q#include <\\E(.+)\\Q>\\E";
     private static final Pattern INCLUDE_PREPROCESS_DIRECTIVE_PATTERN = Pattern
             .compile(INCLUDE_PREPROCESS_DIRECTIVESRC_REGEX),
             INCLUDE_PREPROCESS_DIRECTIVELIB_PATTERN = Pattern
@@ -27,26 +27,30 @@ public class MainLaunch {
 
     public static void main(String[] args) throws FileNotFoundException,
             IOException {
-        if (args.length < 1) {
-            args = new String[1];
-            args[0] = chooseFile();
+        try {
+            if (args.length < 1) {
+                args = new String[1];
+                args[0] = chooseFile();
+            }
+            if (args[0] == null || args[0].matches("^$")) {
+                System.err.println("None, exiting");
+                System.exit(0);
+            }
+            File f = new File(args[0]);
+            if (f.isDirectory()) {
+                throw new RuntimeException("Cannot use a directory");
+            }
+            if (!csrc.accept(f)) {
+                throw new RuntimeException("Not " + csrc.getDescription());
+            }
+            String out = recursiveIncludes(f);
+            FileOutputStream fos = new FileOutputStream(f.getAbsolutePath()
+                    + ".txt");
+            fos.write(out.getBytes());
+            fos.close();
+        } catch (StackOverflowError so) {
+            System.err.println("stack max is " + so.getStackTrace().length);
         }
-        if (args[0] == null || args[0].matches("^$")) {
-            System.err.println("None, exiting");
-            System.exit(0);
-        }
-        File f = new File(args[0]);
-        if (f.isDirectory()) {
-            throw new RuntimeException("Cannot use a directory");
-        }
-        if (!csrc.accept(f)) {
-            throw new RuntimeException("Not " + csrc.getDescription());
-        }
-        FileOutputStream fos = new FileOutputStream(f.getAbsolutePath()
-                + ".txt");
-        String out = recursiveIncludes(f);
-        fos.write(out.getBytes());
-        fos.close();
     }
 
     private static String recursiveIncludes(File f)
@@ -68,7 +72,9 @@ public class MainLaunch {
                     String no_h = toInclude.replace(".h", "");
                     if (no_h.equals(filename.substring(0,
                             filename.lastIndexOf('.')))) {
-                        System.err.println("No need for header files!");
+                        System.err.println("No need for header files! "
+                                + filename + "=" + toInclude);
+                        continue;
                     }
                     System.err.println("Matching header " + toInclude
                             + " with source...");
