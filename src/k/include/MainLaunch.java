@@ -27,39 +27,31 @@ public class MainLaunch {
 
     public static void main(String[] args) throws FileNotFoundException,
             IOException {
-        try {
-            if (args.length < 1) {
-                args = new String[1];
-                args[0] = chooseFile();
-            }
-            if (args[0] == null || args[0].matches("^$")) {
-                System.err.println("None, exiting");
-                System.exit(0);
-            }
-            File f = new File(args[0]);
-            if (f.isDirectory()) {
-                throw new RuntimeException("Cannot use a directory");
-            }
-            if (!csrc.accept(f)) {
-                throw new RuntimeException("Not " + csrc.getDescription());
-            }
-            String out = recursiveIncludes(f);
-            FileOutputStream fos = new FileOutputStream(f.getAbsolutePath()
-                    + ".txt");
-            fos.write(out.getBytes());
-            fos.close();
-        } catch (StackOverflowError so) {
-            System.err.println("stack max is " + so.getStackTrace().length);
+        if (args.length < 1) {
+            args = new String[1];
+            args[0] = chooseFile();
         }
+        if (args[0] == null || args[0].matches("^$")) {
+            System.err.println("None, exiting");
+            System.exit(0);
+        }
+        File f = new File(args[0]);
+        if (f.isDirectory()) {
+            throw new RuntimeException("Cannot use a directory");
+        }
+        if (!csrc.accept(f)) {
+            throw new RuntimeException("Not " + csrc.getDescription());
+        }
+        String out = recursiveIncludes(f);
+        FileOutputStream fos = new FileOutputStream(f.getAbsolutePath()
+                + ".txt");
+        fos.write(out.getBytes());
+        fos.close();
     }
 
     private static String recursiveIncludes(File f)
             throws FileNotFoundException, IOException {
         File dir = f.getParentFile();
-        if (dir.isFile()) {
-            System.err.println("File in file? We need to go deeper!");
-            recursiveIncludes(dir);
-        }
         File[] dirfiles = dir.listFiles();
         String filename = f.getName();
         String[] lines = readLines(new FileInputStream(f));
@@ -72,8 +64,6 @@ public class MainLaunch {
                     String no_h = toInclude.replace(".h", "");
                     if (no_h.equals(filename.substring(0,
                             filename.lastIndexOf('.')))) {
-                        System.err.println("No need for header files! "
-                                + filename + "=" + toInclude);
                         continue;
                     }
                     System.err.println("Matching header " + toInclude
